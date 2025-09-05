@@ -118,12 +118,18 @@ with tabs[3]:
         try:
             context = rag.retrieve(query)
             response = rag.generate(query, context)
-            # Split thinking and answer for display
-            think_part = response.split("<think>")[1].split("</think>")[0] if "<think>" in response else "No thinking trace available."
-            answer_part = response.split("</think>")[-1].strip() if "</think>" in response else response
+            # Parse thinking and answer
+            think_part = ""
+            answer_part = response
+            if "<think>" in response and "</think>" in response:
+                parts = response.split("</think>")
+                think_part = parts[0].replace("<think>", "").strip()
+                answer_part = parts[1].strip() if len(parts) > 1 else "No final answer generated."
+            else:
+                think_part = "The model did not provide a detailed reasoning process."
             # Display answer directly and thinking in a dropdown
             st.write(answer_part)
             with st.expander("View Model's Reasoning Process"):
-                st.write(f"<think>{think_part}</think>", unsafe_allow_html=True)
+                st.write(think_part)
         except Exception as e:
             st.error(f"An error occurred: {str(e)}. Please check the terminal for details.")
