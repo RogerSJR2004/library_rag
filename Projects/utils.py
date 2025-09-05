@@ -1,104 +1,110 @@
-# utils.py
 import pandas as pd
-from datetime import datetime
 import os
 
 def read_books():
-    if os.path.exists('books.xlsx'):
-        return pd.read_excel('books.xlsx')
-    else:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    books_path = os.path.join(script_dir, 'books.xlsx')
+    try:
+        df = pd.read_excel(books_path)
+        return df
+    except FileNotFoundError:
         return pd.DataFrame(columns=['book_id', 'title', 'author', 'copies', 'description', 'tags'])
 
-def write_books(df):
-    df.to_excel('books.xlsx', index=False)
-
 def read_transactions():
-    if os.path.exists('transactions.xlsx'):
-        return pd.read_excel('transactions.xlsx')
-    else:
-        return pd.DataFrame(columns=['transaction_id', 'book_id', 'user_name', 'user_college', 'user_id_email', 'user_phone', 'action', 'timestamp'])
-
-def write_transactions(df):
-    df.to_excel('transactions.xlsx', index=False)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    transactions_path = os.path.join(script_dir, 'transactions.xlsx')
+    try:
+        df = pd.read_excel(transactions_path)
+        return df
+    except FileNotFoundError:
+        return pd.DataFrame(columns=['transaction_id', 'book_id', 'action', 'user_name', 'user_college', 'user_id_email', 'user_phone', 'timestamp'])
 
 def borrow_book(book_id, user_details):
     books = read_books()
     transactions = read_transactions()
     
-    book = books[books['book_id'] == book_id]
-    if book.empty or book['copies'].values[0] <= 0:
-        return False, "Book not available."
+    if book_id not in books['book_id'].values or books.loc[books['book_id'] == book_id, 'copies'].iloc[0] <= 0:
+        return False, "Book not available or invalid book ID."
     
-    # Update copies
+    new_transaction = pd.DataFrame({
+        'transaction_id': [len(transactions) + 1],
+        'book_id': [book_id],
+        'action': ['borrow'],
+        'user_name': [user_details['name']],
+        'user_college': [user_details['college']],
+        'user_id_email': [user_details['id_email']],
+        'user_phone': [user_details['phone']],
+        'timestamp': [pd.Timestamp.now().isoformat()]
+    })
+    
+    transactions = pd.concat([transactions, new_transaction], ignore_index=True)
     books.loc[books['book_id'] == book_id, 'copies'] -= 1
-    write_books(books)
     
-    # Log transaction
-    transaction_id = len(transactions) + 1
-    new_transaction = {
-        'transaction_id': transaction_id,
-        'book_id': book_id,
-        'user_name': user_details['name'],
-        'user_college': user_details['college'],
-        'user_id_email': user_details['id_email'],
-        'user_phone': user_details['phone'],
-        'action': 'borrow',
-        'timestamp': datetime.now().isoformat()
-    }
-    transactions = pd.concat([transactions, pd.DataFrame([new_transaction])], ignore_index=True)
-    write_transactions(transactions)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    books_path = os.path.join(script_dir, 'books.xlsx')
+    transactions_path = os.path.join(script_dir, 'transactions.xlsx')
+    books.to_excel(books_path, index=False)
+    transactions.to_excel(transactions_path, index=False)
     
-    return True, "Book borrowed successfully."
+    return True, f"Book {book_id} borrowed successfully by {user_details['name']}."
 
 def return_book(book_id, user_details):
     books = read_books()
     transactions = read_transactions()
     
-    book = books[books['book_id'] == book_id]
-    if book.empty:
-        return False, "Book not found."
+    if book_id not in books['book_id'].values or books.loc[books['book_id'] == book_id, 'copies'].iloc[0] >= books['copies'].max():
+        return False, "Invalid book ID or book not borrowed."
     
-    # Update copies
+    new_transaction = pd.DataFrame({
+        'transaction_id': [len(transactions) + 1],
+        'book_id': [book_id],
+        'action': ['return'],
+        'user_name': [user_details['name']],
+        'user_college': [user_details['college']],
+        'user_id_email': [user_details['id_email']],
+        'user_phone': [user_details['phone']],
+        'timestamp': [pd.Timestamp.now().isoformat()]
+    })
+    
+    transactions = pd.concat([transactions, new_transaction], ignore_index=True)
     books.loc[books['book_id'] == book_id, 'copies'] += 1
-    write_books(books)
     
-    # Log transaction
-    transaction_id = len(transactions) + 1
-    new_transaction = {
-        'transaction_id': transaction_id,
-        'book_id': book_id,
-        'user_name': user_details['name'],
-        'user_college': user_details['college'],
-        'user_id_email': user_details['id_email'],
-        'user_phone': user_details['phone'],
-        'action': 'return',
-        'timestamp': datetime.now().isoformat()
-    }
-    transactions = pd.concat([transactions, pd.DataFrame([new_transaction])], ignore_index=True)
-    write_transactions(transactions)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    books_path = os.path.join(script_dir, 'books.xlsx')
+    transactions_path = os.path.join(script_dir, 'transactions.xlsx')
+    books.to_excel(books_path, index=False)
+    transactions.to_excel(transactions_path, index=False)
     
-    return True, "Book returned successfully."
+    return True, f"Book {book_id} returned successfully by {user_details['name']}."
 
 def add_book(book_data):
     books = read_books()
-    book_id = books['book_id'].max() + 1 if not books.empty else 1
-    new_book = {
-        'book_id': book_id,
-        'title': book_data['title'],
-        'author': book_data['author'],
-        'copies': book_data['copies'],
-        'description': book_data['description'],
-        'tags': book_data['tags']
-    }
-    books = pd.concat([books, pd.DataFrame([new_book])], ignore_index=True)
-    write_books(books)
-    return book_id
+    new_book = pd.DataFrame({
+        'book_id': [len(books) + 1],
+        'title': [book_data['title']],
+        'author': [book_data['author']],
+        'copies': [book_data['copies']],
+        'description': [book_data['description']],
+        'tags': [book_data['tags']]
+    })
+    books = pd.concat([books, new_book], ignore_index=True)
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    books_path = os.path.join(script_dir, 'books.xlsx')
+    books.to_excel(books_path, index=False)
+    
+    return len(books)
 
 def edit_book(book_id, book_data):
     books = read_books()
     if book_id not in books['book_id'].values:
-        return False, "Book not found."
+        return False, "Invalid book ID."
+    
     for key, value in book_data.items():
         books.loc[books['book_id'] == book_id, key] = value
-    write_books(books)
-    return True, "Book updated successfully."
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    books_path = os.path.join(script_dir, 'books.xlsx')
+    books.to_excel(books_path, index=False)
+    
+    return True, f"Book {book_id} updated successfully."

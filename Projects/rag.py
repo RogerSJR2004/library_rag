@@ -13,7 +13,7 @@ GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable is not set. Please configure it in your environment.")
 client = Groq(api_key=GROQ_API_KEY)
-MODEL = "deepseek-r1-distill-llama-70b"  
+MODEL = "llama-3.1-8b-instant"  # Your specified model
 embedder = SentenceTransformer('all-MiniLM-L6-v2')  # Hugging Face embeddings
 
 class RAG:
@@ -25,7 +25,6 @@ class RAG:
         self.refresh_index()
 
     def refresh_index(self):
-        # Use os.path.join to construct paths relative to the script location
         script_dir = os.path.dirname(os.path.abspath(__file__))
         books_path = os.path.join(script_dir, 'books.xlsx')
         transactions_path = os.path.join(script_dir, 'transactions.xlsx')
@@ -63,11 +62,11 @@ class RAG:
         _, books_indices = self.books_index.search(query_emb.astype(np.float32), top_k)
         book_ids = [self.index_to_book_id.get(idx, None) for idx in books_indices[0]]
         books_retrieved = self.books_df[self.books_df['book_id'].isin(book_ids)]
-        books_context = books_retrieved.to_string(index=False)
+        books_context = books_retrieved.to_string(index=False) if not books_retrieved.empty else "No books found."
         
         if self.transactions_index.ntotal > 0:
             _, trans_indices = self.transactions_index.search(query_emb.astype(np.float32), top_k)
-            trans_retrieved = self.transactions_df.iloc[trans_indices[0]].to_string(index=False)
+            trans_retrieved = self.transactions_df.iloc[trans_indices[0]].to_string(index=False) if len(trans_indices[0]) > 0 else "No transactions found."
         else:
             trans_retrieved = "No transactions available."
         
@@ -111,7 +110,7 @@ class RAG:
 Query: {query}
 
 Instructions:
-- You are a library assistant. Include your reasoning process in a single <think> block before the final answer, and do not include the answer within the <think> block. The <think> block should only contain your step-by-step reasoning process.
+- You are a library assistant. Include your reasoning process in a single <think> block before the final answer, and do not include the answer within the <think> block. The <think> block should only contain your step-by-step reasoning process, starting with '<think>' and ending with '</think>'.
 - For availability: A book is available if 'Copies Available' > 0 (report the exact number, e.g., 'available with 3 copies remaining'). It is out of stock only if copies = 0.
 - If the query asks about a specific book ID, use the 'Book ID' field to identify it, then report title, author, description, tags, and availability.
 - For general queries (e.g., 'available books' or 'books in AI'), list relevant books with titles, authors, tags, and availability status/copies.
@@ -127,17 +126,19 @@ Instructions:
                 {"role": "user", "content": prompt}
             ],
             model=MODEL,
+            max_tokens=500  # Added to ensure sufficient response length
         )
         
         response = chat_completion.choices[0].message.content
-        # Parse thinking and answer
+        # Parse thinking and answer with stricter validation
         think_part = ""
         answer_part = response
         if "<think>" in response and "</think>" in response:
             parts = response.split("</think>")
-            think_part = parts[0].replace("<think>", "<think>").strip()
-            answer_part = parts[1].strip() if len(parts) > 1 else "No final answer generated."
+            think_part = parts[0].replace("<think>", "").strip() if parts[0] else "No reasoning provided."
+            answer_part = parts[1].strip() if len(parts) > 1 and parts[1] else "No answer generated."
         else:
-            think_part = "<think> The model did not provide a detailed reasoning process. </think>"
+            think_part = "The model did not provide a detailed reasoning process."
+            answer_part = response if response else "No response generated."
         
-        return f"{think_part}\n{answer_part}"
+        return f"<think>{think_part}</think>\n{answer_part}"

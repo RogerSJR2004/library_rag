@@ -15,7 +15,10 @@ tabs = st.tabs(["Browse & Borrow", "Return Book", "Admin", "LLM Chat"])
 with tabs[0]:
     st.title("Browse & Borrow Books")
     books = read_books()
-    st.dataframe(books)
+    if not books.empty:
+        st.dataframe(books)
+    else:
+        st.warning("No book data available. Please check 'books.xlsx'.")
     
     st.subheader("Borrow a Book")
     with st.form("borrow_form"):
@@ -61,11 +64,17 @@ with tabs[2]:
     
     st.subheader("View Books")
     books = read_books()
-    st.dataframe(books)
+    if not books.empty:
+        st.dataframe(books)
+    else:
+        st.warning("No book data available. Please check 'books.xlsx'.")
     
     st.subheader("View Latest Transactions")
-    transactions = read_transactions().tail(200)
-    st.dataframe(transactions)
+    transactions = read_transactions()
+    if not transactions.empty:
+        st.dataframe(transactions.tail(200))
+    else:
+        st.warning("No transaction data available. Please check 'transactions.xlsx'.")
     
     st.subheader("Add New Book")
     with st.form("add_book_form"):
@@ -108,8 +117,11 @@ with tabs[2]:
     
     st.subheader("Export Transactions")
     transactions = read_transactions()
-    csv = transactions.to_csv(index=False)
-    st.download_button("Download CSV", csv, "transactions.csv", "text/csv")
+    if not transactions.empty:
+        csv = transactions.to_csv(index=False)
+        st.download_button("Download CSV", csv, "transactions.csv", "text/csv")
+    else:
+        st.warning("No transaction data to export.")
 
 with tabs[3]:
     st.title("LLM Chat with RAG")
@@ -123,13 +135,20 @@ with tabs[3]:
             answer_part = response
             if "<think>" in response and "</think>" in response:
                 parts = response.split("</think>")
-                think_part = parts[0].replace("<think>", "").strip()
-                answer_part = parts[1].strip() if len(parts) > 1 else "No final answer generated."
+                think_part = parts[0].replace("<think>", "").strip() if parts[0] else "No reasoning provided."
+                answer_part = parts[1].strip() if len(parts) > 1 and parts[1] else "No answer generated."
             else:
                 think_part = "The model did not provide a detailed reasoning process."
+                answer_part = response if response else "No response generated."
             # Display answer directly and thinking in a dropdown
-            st.write(answer_part)
+            if answer_part:
+                st.write(answer_part)
+            else:
+                st.warning("No answer available.")
             with st.expander("View Model's Reasoning Process"):
-                st.write(think_part)
+                if think_part:
+                    st.write(think_part)
+                else:
+                    st.write("No reasoning process available.")
         except Exception as e:
             st.error(f"An error occurred: {str(e)}. Please check the terminal for details.")
