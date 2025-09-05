@@ -13,7 +13,7 @@ GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable is not set. Please configure it in your environment.")
 client = Groq(api_key=GROQ_API_KEY)
-MODEL = "llama-3.1-8b-instant"  # Your specified model
+MODEL = "deepseek-r1-distill-llama-70b"  # Your specified model
 embedder = SentenceTransformer('all-MiniLM-L6-v2')  # Hugging Face embeddings
 
 class RAG:
