@@ -1,24 +1,61 @@
-# create_sample_data.py
 import pandas as pd
 from datetime import datetime
 
-# Sample books data
+# Sample books data with top 10 self-help books for 2025
 books_data = {
-    'book_id': [1, 2, 3, 4, 5],
-    'title': ['The Alchemist', '1984', 'To Kill a Mockingbird', 'The Great Gatsby', 'Pride and Prejudice'],
-    'author': ['Paulo Coelho', 'George Orwell', 'Harper Lee', 'F. Scott Fitzgerald', 'Jane Austen'],
-    'copies': [5, 3, 4, 2, 6],
-    'description': [
-        'A philosophical novel about following one\'s dreams.',
-        'A dystopian novel about totalitarianism.',
-        'A novel about racial injustice in the American South.',
-        'A novel about the American Dream in the 1920s.',
-        'A romantic novel about manners and marriage.'
+    'book_id': list(range(1, 11)),
+    'title': [
+        'Let Them: A Blueprint for Better Boundaries', 
+        'Open When: A Practical Guide to Mental Health', 
+        'The Power of Ritual', 
+        'Attached', 
+        'The Upside of Stress', 
+        'A Renaissance of Our Own', 
+        'The Courage to Be Disliked', 
+        'Atomic Habits', 
+        'The Subtle Art of Not Giving a F*ck', 
+        'Daring Greatly'
     ],
-    'tags': ['adventure, philosophy', 'dystopia, politics', 'drama, social issues', 'classics, romance', 'romance, classics']
+    'author': [
+        'Mel Robbins', 
+        'Dr. Julie Smith', 
+        'Casper ter Kuile', 
+        'Amir Levine & Rachel Heller', 
+        'Kelly McGonigal', 
+        'Rachel Cargle', 
+        'Ichiro Kishimi & Fumitake Koga', 
+        'James Clear', 
+        'Mark Manson', 
+        'Brené Brown'
+    ],
+    'copies': [5, 4, 6, 3, 5, 4, 6, 5, 4, 6],
+    'description': [
+        'A liberating guide to releasing control over others and embracing personal choice for a fulfilling life.',
+        'Practical advice for navigating life’s challenges and improving mental resilience.',
+        'Explores how intentional rituals can create deeper meaning and connection in daily life.',
+        'A science-based look at attachment styles to build healthier relationships.',
+        'Transforms stress into a tool for resilience and growth with a new perspective.',
+        'A personal journey of empowerment and challenging societal norms.',
+        'Uses Adlerian psychology to guide readers toward happiness and self-worth.',
+        'A proven method to build good habits and break bad ones.',
+        'A counterintuitive approach to living well by focusing on what truly matters.',
+        'A research-based exploration of vulnerability and courage in personal growth.'
+    ],
+    'tags': [
+        'self-help, boundaries', 
+        'self-help, mental health', 
+        'self-help, mindfulness', 
+        'self-help, relationships', 
+        'self-help, stress management', 
+        'self-help, empowerment', 
+        'self-help, psychology', 
+        'self-help, habits', 
+        'self-help, mindset', 
+        'self-help, vulnerability'
+    ]
 }
 
-# Sample transactions data (empty initially)
+# Sample transactions data
 transactions_data = {
     'transaction_id': [],
     'book_id': [],
@@ -38,4 +75,4 @@ transactions_df = pd.DataFrame(transactions_data)
 books_df.to_excel('books.xlsx', index=False)
 transactions_df.to_excel('transactions.xlsx', index=False)
 
-print("Sample data created successfully.")
+print("Sample data created successfully with 10 self-help books.")
