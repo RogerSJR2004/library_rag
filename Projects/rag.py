@@ -13,7 +13,7 @@ GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable is not set. Please configure it in your environment.")
 client = Groq(api_key=GROQ_API_KEY)
-MODEL = "deepseek-r1-distill-llama-70b"  # Your specified model
+MODEL = "deepseek-r1-distill-llama-70b"  
 embedder = SentenceTransformer('all-MiniLM-L6-v2')  # Hugging Face embeddings
 
 class RAG:
@@ -111,9 +111,9 @@ Query: {query}
 
 Instructions:
 - You are a library assistant. Include your reasoning process in a single <think> block before the final answer, and do not include the answer within the <think> block. The <think> block should only contain your step-by-step reasoning process, starting with '<think>' and ending with '</think>'.
-- For availability: A book is available if 'Copies Available' > 0 (report the exact number, e.g., 'available with 3 copies remaining'). It is out of stock only if copies = 0.
-- If the query asks about a specific book ID, use the 'Book ID' field to identify it, then report title, author, description, tags, and availability.
-- For general queries (e.g., 'available books' or 'books in AI'), list relevant books with titles, authors, tags, and availability status/copies.
+- For availability: A book is available if 'Copies Available' > 0 (report the exact number, e.g., 'available with 3 copies remaining'). It is out of stock only if copies = 0. Always check the 'Copies Available' field in the context for the current number.
+- If the query asks about a specific book ID, use the 'Book ID' field to identify it, then report title, author, description, tags, and availability based on the current 'Copies Available'.
+- For general queries (e.g., 'available books' or 'books in AI'), list relevant books with titles, authors, tags, and availability status/copies, filtering for 'Copies Available' > 0.
 - For transaction queries, summarize details (e.g., who borrowed/returned, when) and link to current availability.
 - Use insights to add value, such as trends, low stock warnings, or recommendations.
 - Format the final answer (outside the <think> block) clearly with bullet points or paragraphs for readability.
@@ -126,11 +126,10 @@ Instructions:
                 {"role": "user", "content": prompt}
             ],
             model=MODEL,
-            max_tokens=500  # Added to ensure sufficient response length
+            max_tokens=500
         )
         
         response = chat_completion.choices[0].message.content
-        # Parse thinking and answer with stricter validation
         think_part = ""
         answer_part = response
         if "<think>" in response and "</think>" in response:
