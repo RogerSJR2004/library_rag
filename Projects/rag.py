@@ -13,7 +13,7 @@ GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable is not set. Please configure it in your environment.")
 client = Groq(api_key=GROQ_API_KEY)
-MODEL = "deepseek-r1-distill-llama-70b"  
+MODEL = "llama-3.1-8b-instant"  # Your specified model
 embedder = SentenceTransformer('all-MiniLM-L6-v2')  # Hugging Face embeddings
 
 class RAG:
@@ -30,17 +30,19 @@ class RAG:
         transactions_path = os.path.join(script_dir, 'transactions.xlsx')
         
         self.books_df = pd.read_excel(books_path)
+        print(f"Loaded {len(self.books_df)} books from {books_path}")  # Debug output
         self.transactions_df = pd.read_excel(transactions_path)
         
         books_texts = self.books_df.apply(
             lambda row: f"Book ID: {row['book_id']}, Title: {row['title']}, Author: {row['author']}, Description: {row['description']}, Tags: {row['tags']}, Copies Available: {row['copies']} (available if copies > 0, out of stock if copies = 0)", 
             axis=1
         )
-        books_embeddings = embedder.encode(books_texts)
+        books_embeddings = embedder.encode(books_texts.tolist())
         
         dim = books_embeddings.shape[1]
         self.books_index = faiss.IndexFlatL2(dim)
         self.books_index.add(books_embeddings.astype(np.float32))
+        print(f"Indexed {self.books_index.ntotal} books in FAISS")  # Debug output
         
         self.book_id_to_index = {row['book_id']: idx for idx, row in self.books_df.iterrows()}
         self.index_to_book_id = {idx: row['book_id'] for idx, row in self.books_df.iterrows()}
@@ -50,17 +52,17 @@ class RAG:
                 lambda row: f"Transaction ID: {row['transaction_id']}, Book ID: {row['book_id']}, Action: {row['action']}, User: {row['user_name']}, College: {row['user_college']}, ID/Email: {row['user_id_email']}, Phone: {row['user_phone']}, Timestamp: {row['timestamp']}", 
                 axis=1
             )
-            transactions_embeddings = embedder.encode(transactions_texts)
+            transactions_embeddings = embedder.encode(transactions_texts.tolist())
             self.transactions_index = faiss.IndexFlatL2(dim)
             self.transactions_index.add(transactions_embeddings.astype(np.float32))
         else:
             self.transactions_index = faiss.IndexFlatL2(dim)
 
-    def retrieve(self, query, top_k=5):
+    def retrieve(self, query, top_k=10):  # Increased top_k to ensure all relevant books are retrieved
         query_emb = embedder.encode([query])
         
         _, books_indices = self.books_index.search(query_emb.astype(np.float32), top_k)
-        book_ids = [self.index_to_book_id.get(idx, None) for idx in books_indices[0]]
+        book_ids = [self.index_to_book_id.get(idx, None) for idx in books_indices[0] if idx < len(self.books_df)]
         books_retrieved = self.books_df[self.books_df['book_id'].isin(book_ids)]
         books_context = books_retrieved.to_string(index=False) if not books_retrieved.empty else "No books found."
         
@@ -113,7 +115,7 @@ Instructions:
 - You are a library assistant. Include your reasoning process in a single <think> block before the final answer, and do not include the answer within the <think> block. The <think> block should only contain your step-by-step reasoning process, starting with '<think>' and ending with '</think>'.
 - For availability: A book is available if 'Copies Available' > 0 (report the exact number, e.g., 'available with 3 copies remaining'). It is out of stock only if copies = 0. Always check the 'Copies Available' field in the context for the current number.
 - If the query asks about a specific book ID, use the 'Book ID' field to identify it, then report title, author, description, tags, and availability based on the current 'Copies Available'.
-- For general queries (e.g., 'available books' or 'books in AI'), list relevant books with titles, authors, tags, and availability status/copies, filtering for 'Copies Available' > 0.
+- For general queries (e.g., 'available books' or 'books in self-help'), list all relevant books with titles, authors, tags, and availability status/copies, ensuring all books in the context are considered.
 - For transaction queries, summarize details (e.g., who borrowed/returned, when) and link to current availability.
 - Use insights to add value, such as trends, low stock warnings, or recommendations.
 - Format the final answer (outside the <think> block) clearly with bullet points or paragraphs for readability.
@@ -126,7 +128,7 @@ Instructions:
                 {"role": "user", "content": prompt}
             ],
             model=MODEL,
-            max_tokens=500
+            max_tokens=1000
         )
         
         response = chat_completion.choices[0].message.content

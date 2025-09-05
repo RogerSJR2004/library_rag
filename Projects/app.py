@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-rag = RAG()
+rag = RAG()  # Reinitialize RAG to ensure fresh data load
 
 # Create tabs for navigation
 tabs = st.tabs(["Browse & Borrow", "Return Book", "Admin", "LLM Chat"])
@@ -34,7 +34,7 @@ with tabs[0]:
             success, message = borrow_book(book_id, user_details)
             if success:
                 st.success(message)
-                rag.refresh_index()  # Refresh RAG after borrow
+                rag.refresh_index()
             else:
                 st.error(message)
 
@@ -55,7 +55,7 @@ with tabs[1]:
             success, message = return_book(book_id, user_details)
             if success:
                 st.success(message)
-                rag.refresh_index()  # Refresh RAG after return
+                rag.refresh_index()
             else:
                 st.error(message)
 
@@ -89,7 +89,7 @@ with tabs[2]:
             book_data = {'title': title, 'author': author, 'copies': copies, 'description': description, 'tags': tags}
             book_id = add_book(book_data)
             st.success(f"Book added with ID {book_id}")
-            rag.refresh_index()  # Refresh RAG after adding a book
+            rag.refresh_index()
     
     st.subheader("Edit Book")
     with st.form("edit_book_form"):
@@ -111,7 +111,7 @@ with tabs[2]:
             success, message = edit_book(book_id, book_data)
             if success:
                 st.success(message)
-                rag.refresh_index()  # Refresh RAG after editing a book
+                rag.refresh_index()
             else:
                 st.error(message)
     
